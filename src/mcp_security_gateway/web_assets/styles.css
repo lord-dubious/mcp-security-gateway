@@ -1,1 +1,173 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@600;700&family=Outfit:wght@500;700;800&display=swap');body{margin:0;min-height:100vh;background:radial-gradient(circle at top right,rgba(248,113,113,.2),transparent 35%),linear-gradient(135deg,#080a12,#111827);color:#f8fafc;font-family:Outfit,system-ui,sans-serif}.shell{display:grid;grid-template-columns:350px 1fr;gap:24px;padding:28px}aside,section,.card,.metric{border:1px solid rgba(248,113,113,.25);background:rgba(15,23,42,.82);border-radius:28px;box-shadow:0 24px 90px rgba(0,0,0,.35)}aside,section{padding:28px}p{color:#94a3b8}h1{font-size:38px;line-height:.95}button{background:linear-gradient(135deg,#fb7185,#fbbf24);border:0;border-radius:999px;padding:12px 16px;font-weight:800;color:#16070a}.request{padding:14px;border:1px solid rgba(255,255,255,.12);border-radius:18px;margin:12px 0;cursor:pointer}.request.active{outline:2px solid #fb7185}.hero{display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:20px}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0}.metric,.card{padding:16px}.metric b{font:800 28px/1 IBM Plex Mono,monospace}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.allow{color:#34d399}.require_approval{color:#fbbf24}.block{color:#fb7185}@media(max-width:900px){.shell,.grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}}
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@600;700&family=Outfit:wght@500;700;800&display=swap');
+
+:root {
+  color-scheme: dark;
+  --bg: #080a12;
+  --panel: rgba(15, 23, 42, 0.82);
+  --border: rgba(248, 113, 113, 0.25);
+  --muted: #94a3b8;
+  --text: #f8fafc;
+  --danger: #fb7185;
+  --warn: #fbbf24;
+  --ok: #34d399;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top right, rgba(248, 113, 113, 0.2), transparent 35%), linear-gradient(135deg, var(--bg), #111827);
+  color: var(--text);
+  font-family: Outfit, system-ui, sans-serif;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 24px;
+  padding: 28px;
+}
+
+aside,
+section,
+.card,
+.metric,
+.evaluate-panel {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 28px;
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.35);
+}
+
+aside,
+section {
+  padding: 28px;
+}
+
+p,
+small {
+  color: var(--muted);
+}
+
+h1 {
+  font-size: 38px;
+  line-height: 0.95;
+}
+
+button {
+  background: linear-gradient(135deg, var(--danger), var(--warn));
+  border: 0;
+  border-radius: 999px;
+  color: #16070a;
+  font-weight: 800;
+  padding: 12px 16px;
+}
+
+.secondary {
+  width: 100%;
+}
+
+.evaluate-panel {
+  margin: 20px 0;
+  padding: 18px;
+}
+
+.evaluate-panel h2 {
+  margin: 6px 0 12px;
+}
+
+.eyebrow {
+  color: var(--warn);
+  font: 700 11px/1 IBM Plex Mono, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+textarea {
+  box-sizing: border-box;
+  min-height: 190px;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  background: rgba(2, 6, 23, 0.82);
+  color: var(--text);
+  font: 600 12px/1.5 IBM Plex Mono, monospace;
+  margin-bottom: 12px;
+  padding: 14px;
+}
+
+textarea:focus {
+  outline: 2px solid rgba(251, 191, 36, 0.7);
+}
+
+.success {
+  color: var(--ok);
+}
+
+.error {
+  color: var(--danger);
+}
+
+.request {
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  margin: 12px 0;
+  cursor: pointer;
+}
+
+.request.active {
+  outline: 2px solid var(--danger);
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 20px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.metric,
+.card {
+  padding: 16px;
+}
+
+.metric b {
+  font: 800 28px/1 IBM Plex Mono, monospace;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.allow {
+  color: var(--ok);
+}
+
+.require_approval {
+  color: var(--warn);
+}
+
+.block {
+  color: var(--danger);
+}
+
+@media (max-width: 900px) {
+  .shell,
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+}

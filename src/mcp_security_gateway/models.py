@@ -42,6 +42,14 @@ class ToolRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class ToolRequestEvaluation(BaseModel):
+    id: str | None = None
+    agent_name: str
+    tool_name: str
+    input_summary: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class GatewayDecision(BaseModel):
     id: str
     request_id: str

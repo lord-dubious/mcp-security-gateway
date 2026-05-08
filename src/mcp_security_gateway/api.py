@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from mcp_security_gateway.models import GatewayDetail, GatewaySummary
+from mcp_security_gateway.models import GatewayDetail, GatewaySummary, ToolRequestEvaluation
 from mcp_security_gateway.repository import GatewayRepository
 
 router = APIRouter(prefix="/api")
@@ -41,6 +41,11 @@ def policies(repository: RepositoryDep):
 @router.get("/requests")
 def requests(repository: RepositoryDep):
     return repository.list_requests()
+
+
+@router.post("/requests/evaluate", response_model=GatewayDetail)
+def evaluate_request(payload: ToolRequestEvaluation, repository: RepositoryDep) -> GatewayDetail:
+    return repository.evaluate_request(payload)
 
 
 @router.get("/requests/{request_id}", response_model=GatewayDetail)

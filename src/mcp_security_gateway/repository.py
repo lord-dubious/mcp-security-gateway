@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fnmatch
 import json
 import sqlite3
 from collections.abc import Sequence
@@ -18,6 +19,8 @@ from mcp_security_gateway.models import (
     RiskLevel,
     ToolPolicy,
     ToolRequest,
+    ToolRequestEvaluation,
+    utcnow,
 )
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -76,6 +79,37 @@ class GatewayRepository:
         ]
         return GatewayDetail(request=request, decision=decisions[0], audit_events=events)
 
+    def evaluate_request(self, payload: ToolRequestEvaluation) -> GatewayDetail:
+        self.initialize()
+        request = ToolRequest(
+            id=payload.id or self._next_request_id(),
+            agent_name=payload.agent_name,
+            tool_name=payload.tool_name,
+            input_summary=payload.input_summary,
+            requested_at=utcnow(),
+            metadata=payload.metadata,
+        )
+        decision = self._evaluate(request)
+        events = self._audit_events_for(request, decision)
+
+        with self._connect() as conn:
+            conn.execute(
+                "DELETE FROM audit_events WHERE json_extract(payload, '$.request_id') = ?",
+                (request.id,),
+            )
+            conn.execute(
+                "DELETE FROM decisions WHERE json_extract(payload, '$.request_id') = ?",
+                (request.id,),
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO requests (id, payload) VALUES (?, ?)",
+                (request.id, request.model_dump_json()),
+            )
+            self._insert_many(conn, "decisions", [decision])
+            self._insert_many(conn, "audit_events", events)
+
+        return GatewayDetail(request=request, decision=decision, audit_events=events)
+
     def summary(self) -> GatewaySummary:
         decisions = self._load_all("decisions", GatewayDecision)
         return GatewaySummary(
@@ -93,6 +127,94 @@ class GatewayRepository:
             f"INSERT INTO {table} (id, payload) VALUES (?, ?)",
             [(str(row.model_dump()["id"]), row.model_dump_json()) for row in rows],
         )
+
+    def _next_request_id(self) -> str:
+        with self._connect() as conn:
+            count = conn.execute("SELECT COUNT(*) FROM requests").fetchone()[0]
+        return f"req_live_{count + 1:03d}"
+
+    def _evaluate(self, request: ToolRequest) -> GatewayDecision:
+        policy = self._match_policy(request.tool_name)
+        decision = policy.default_decision if policy else Decision.REQUIRE_APPROVAL
+        risk = policy.max_risk if policy else RiskLevel.MEDIUM
+        matched_policy = policy.id if policy else "policy_unmatched_tool"
+        reasons = [policy.rationale if policy else "No exact policy matched this tool name."]
+
+        lowered_input = request.input_summary.lower()
+        lowered_tool = request.tool_name.lower()
+        metadata_text = json.dumps(request.metadata, sort_keys=True).lower()
+        sensitive_markers = {"secret", "token", "credential", "password", "api key", "private key"}
+        destructive_markers = {"delete", "rm ", "drop", "deploy", "production", "push", "write"}
+
+        if any(
+            marker in lowered_input or marker in lowered_tool or marker in metadata_text
+            for marker in sensitive_markers
+        ):
+            decision = Decision.BLOCK
+            risk = RiskLevel.CRITICAL
+            matched_policy = "policy_secrets"
+            reasons.append("Secret or credential access detected in the request boundary.")
+
+        environment = str(request.metadata.get("environment", "")).lower()
+        if environment in {"prod", "production"}:
+            if decision != Decision.BLOCK:
+                decision = Decision.REQUIRE_APPROVAL
+                risk = RiskLevel.HIGH
+            reasons.append("Production environment metadata requires human review.")
+
+        if request.tool_name.startswith("shell.") and any(
+            marker in lowered_input for marker in destructive_markers
+        ):
+            if decision != Decision.BLOCK:
+                decision = Decision.REQUIRE_APPROVAL
+                risk = RiskLevel.HIGH
+            reasons.append(
+                "Shell command contains mutation, deployment, or destructive-operation language."
+            )
+
+        if decision == Decision.ALLOW:
+            reasons.append("Allowed because matched policy is low-risk and read-only.")
+        elif decision == Decision.REQUIRE_APPROVAL:
+            reasons.append("Human approval required before execution.")
+        else:
+            reasons.append("Execution blocked before tool invocation.")
+
+        return GatewayDecision(
+            id=f"dec_{request.id}",
+            request_id=request.id,
+            decision=decision,
+            risk_level=risk,
+            matched_policy=matched_policy,
+            reasons=list(dict.fromkeys(reasons)),
+            requires_human_review=decision != Decision.ALLOW,
+        )
+
+    def _match_policy(self, tool_name: str) -> ToolPolicy | None:
+        for policy in self.list_policies():
+            if fnmatch.fnmatch(tool_name, policy.tool_pattern) or tool_name == policy.tool_pattern:
+                return policy
+        return None
+
+    def _audit_events_for(
+        self, request: ToolRequest, decision: GatewayDecision
+    ) -> list[AuditEvent]:
+        created_at = utcnow()
+        return [
+            AuditEvent(
+                id=f"audit_{request.id}_received",
+                request_id=request.id,
+                message="Received live MCP tool request for policy evaluation.",
+                created_at=created_at,
+                metadata={"tool_name": request.tool_name, "agent_name": request.agent_name},
+            ),
+            AuditEvent(
+                id=f"audit_{request.id}_decision",
+                request_id=request.id,
+                message=f"Returned {decision.decision} with {decision.risk_level} risk.",
+                created_at=created_at,
+                metadata={"matched_policy": decision.matched_policy, "reasons": decision.reasons},
+            ),
+        ]
 
     def _load_one(self, table: str, row_id: str, model: type[ModelT]) -> ModelT | None:
         with self._connect() as conn:
